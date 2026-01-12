@@ -271,10 +271,29 @@ app.get("/api/tafTimeline", async (req, res) => {
         const vis = parseVisibToNumber(active?.visib);
         const ceil = ceilingFromClouds(active?.clouds || []);
 
-        // ✅ If we don't actually have ceiling/vis, don't pretend it's VFR.
+        // Determine flight category with fallbacks
         let cat = "unk";
-        if (typeof vis === "number" && typeof ceil === "number") {
-          cat = flightCategory(vis, ceil);
+        
+        // First, check if TAF provides a flightCat directly
+        if (active?.flightCat) {
+          const fc = String(active.flightCat).toLowerCase();
+          if (["vfr", "mvfr", "ifr", "lifr"].includes(fc)) {
+            cat = fc;
+          }
+        }
+        
+        // If no direct flightCat, calculate from visibility and ceiling
+        if (cat === "unk") {
+          if (typeof vis === "number" && typeof ceil === "number") {
+            // Both available - use both
+            cat = flightCategory(vis, ceil);
+          } else if (typeof vis === "number") {
+            // Only visibility available - assume unlimited ceiling (10000ft) for calculation
+            cat = flightCategory(vis, 10000);
+          } else if (typeof ceil === "number") {
+            // Only ceiling available - assume unlimited visibility (10sm) for calculation
+            cat = flightCategory(10, ceil);
+          }
         }
 
         timeline.push({ hourIso: hour.toISOString(), cat });
