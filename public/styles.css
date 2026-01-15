@@ -410,6 +410,8 @@ header {
   font-size: 0.95rem;
   opacity: 0.9;
   margin-top: 6px;
+  padding: 15px;
+  background: rgba(0, 0, 0, .4);
 }
 
 /* --------------------------------
@@ -431,6 +433,7 @@ header {
   color: #ff5252;
   margin: 20px 0;
 }
+
 
 /* --------------------------------
    Mobile tweaks
