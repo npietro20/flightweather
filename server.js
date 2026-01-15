@@ -271,6 +271,13 @@ app.get("/api/tafTimeline", async (req, res) => {
         const vis = parseVisibToNumber(active?.visib);
         const ceil = ceilingFromClouds(active?.clouds || []);
 
+        // Extract wind data
+        const windSpeed = typeof active?.wspd === "number" ? active.wspd : 
+                         typeof active?.wspdKt === "number" ? active.wspdKt : null;
+        const windGust = typeof active?.wgst === "number" ? active.wgst : 
+                         typeof active?.wgstKt === "number" ? active.wgstKt : null;
+        const windDir = typeof active?.wdir === "number" ? active.wdir : null;
+
         // Determine flight category with fallbacks
         let cat = "unk";
         
@@ -296,7 +303,16 @@ app.get("/api/tafTimeline", async (req, res) => {
           }
         }
 
-        timeline.push({ hourIso: hour.toISOString(), cat });
+        // Include detailed data for tooltips
+        timeline.push({ 
+          hourIso: hour.toISOString(), 
+          cat,
+          vis: vis,
+          ceil: ceil,
+          windSpeed: windSpeed,
+          windGust: windGust,
+          windDir: windDir
+        });
       }
 
       out.push({ icaoId, timeline });

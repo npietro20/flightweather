@@ -246,7 +246,45 @@ function renderTimelineInto(containerEl, timeline) {
     catEl.textContent = label;
     catEl.classList.add(cat);
 
-    tickEl.title = `${hour} – ${label}`;
+    // Build tooltip with detailed information for this specific hour
+    const tooltipParts = [];
+    
+    // Visibility
+    if (typeof h.vis === "number") {
+      const visText = h.vis % 1 === 0 ? h.vis.toFixed(0) : h.vis.toFixed(1);
+      tooltipParts.push(`Visibility: ${visText}sm`);
+    } else {
+      tooltipParts.push("Visibility: —");
+    }
+    
+    // Ceiling
+    if (typeof h.ceil === "number") {
+      tooltipParts.push(`Ceiling: ${h.ceil.toLocaleString()}ft`);
+    } else {
+      tooltipParts.push("Ceiling: —");
+    }
+    
+    // Wind
+    if (typeof h.windSpeed === "number" || typeof h.windGust === "number") {
+      const windParts = [];
+      if (typeof h.windDir === "number") {
+        windParts.push(`${h.windDir}°`);
+      }
+      if (typeof h.windSpeed === "number") {
+        windParts.push(`${h.windSpeed}kt`);
+      } else {
+        windParts.push("—kt");
+      }
+      if (typeof h.windGust === "number") {
+        windParts.push(`G${h.windGust}kt`);
+      }
+      tooltipParts.push(`Wind: ${windParts.join(" ")}`);
+    } else {
+      tooltipParts.push("Wind: —");
+    }
+
+    // Set tooltip on the tick element
+    tickEl.title = tooltipParts.join("\n");
     timelineEl.appendChild(tickEl);
   }
 
