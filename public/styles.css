@@ -130,8 +130,38 @@ header {
   align-items:center;
 }
 
-.alert .msg{ font-weight:900; }
-.alert .src{ opacity:0.7; font-weight:700; }
+.alert .msg{ 
+  font-weight:900; 
+  flex: 1;
+}
+
+.alert-close {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+  flex-shrink: 0;
+}
+
+.alert-close:hover {
+  opacity: 1;
+}
+
+.alert-close:focus {
+  outline: 2px solid rgba(255,255,255,0.6);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
 
 .alert.ifr{ border-color: rgba(255,82,82,0.75); }
 .alert.lifr{ border-color: rgba(194,24,91,0.75); }

@@ -247,44 +247,57 @@ function renderTimelineInto(containerEl, timeline) {
     catEl.classList.add(cat);
 
     // Build tooltip with detailed information for this specific hour
+    // Access properties directly from the timeline item
     const tooltipParts = [];
     
     // Visibility
-    if (typeof h.vis === "number") {
-      const visText = h.vis % 1 === 0 ? h.vis.toFixed(0) : h.vis.toFixed(1);
+    const vis = h.vis;
+    if (vis != null && typeof vis === "number" && !isNaN(vis) && isFinite(vis) && vis >= 0) {
+      const visText = vis % 1 === 0 ? String(Math.round(vis)) : vis.toFixed(1);
       tooltipParts.push(`Visibility: ${visText}sm`);
     } else {
       tooltipParts.push("Visibility: —");
     }
     
     // Ceiling
-    if (typeof h.ceil === "number") {
-      tooltipParts.push(`Ceiling: ${h.ceil.toLocaleString()}ft`);
+    const ceil = h.ceil;
+    if (ceil != null && typeof ceil === "number" && !isNaN(ceil) && isFinite(ceil) && ceil > 0) {
+      tooltipParts.push(`Ceiling: ${Math.round(ceil).toLocaleString()}ft`);
     } else {
       tooltipParts.push("Ceiling: —");
     }
     
     // Wind
-    if (typeof h.windSpeed === "number" || typeof h.windGust === "number") {
+    const windSpeed = h.windSpeed;
+    const windGust = h.windGust;
+    const windDir = h.windDir;
+    
+    const hasWind = (windSpeed != null && typeof windSpeed === "number" && !isNaN(windSpeed) && isFinite(windSpeed) && windSpeed >= 0) ||
+                    (windGust != null && typeof windGust === "number" && !isNaN(windGust) && isFinite(windGust) && windGust >= 0);
+    
+    if (hasWind) {
       const windParts = [];
-      if (typeof h.windDir === "number") {
-        windParts.push(`${h.windDir}°`);
+      if (windDir != null && typeof windDir === "number" && !isNaN(windDir) && isFinite(windDir) && windDir >= 0 && windDir <= 360) {
+        windParts.push(`${Math.round(windDir)}°`);
       }
-      if (typeof h.windSpeed === "number") {
-        windParts.push(`${h.windSpeed}kt`);
+      if (windSpeed != null && typeof windSpeed === "number" && !isNaN(windSpeed) && isFinite(windSpeed) && windSpeed >= 0) {
+        windParts.push(`${Math.round(windSpeed)}kt`);
+      }
+      if (windGust != null && typeof windGust === "number" && !isNaN(windGust) && isFinite(windGust) && windGust >= 0) {
+        windParts.push(`G${Math.round(windGust)}kt`);
+      }
+      if (windParts.length > 0) {
+        tooltipParts.push(`Wind: ${windParts.join(" ")}`);
       } else {
-        windParts.push("—kt");
+        tooltipParts.push("Wind: —");
       }
-      if (typeof h.windGust === "number") {
-        windParts.push(`G${h.windGust}kt`);
-      }
-      tooltipParts.push(`Wind: ${windParts.join(" ")}`);
     } else {
       tooltipParts.push("Wind: —");
     }
 
     // Set tooltip on the tick element
-    tickEl.title = tooltipParts.join("\n");
+    const tooltipText = tooltipParts.join("\n");
+    tickEl.title = tooltipText;
     timelineEl.appendChild(tickEl);
   }
 
@@ -304,6 +317,18 @@ function findFirstIfrHour(timeline, lookaheadHours = 6) {
   return null;
 }
 
+// Track dismissed alerts (by unique key)
+const dismissedAlerts = new Set();
+
+function getAlertKey(alert) {
+  // Create unique key for each alert
+  if (alert.type === "now") {
+    return `${alert.name}-${alert.cat}-now`;
+  } else {
+    return `${alert.name}-${alert.cat}-${alert.hourIso}`;
+  }
+}
+
 function renderAlerts(alerts) {
   const el = $("alert-banner");
   if (!el) return;
@@ -314,29 +339,41 @@ function renderAlerts(alerts) {
     return;
   }
 
-  alerts.forEach(a => {
+  // Filter out dismissed alerts
+  const activeAlerts = alerts.filter(a => !dismissedAlerts.has(getAlertKey(a)));
+
+  if (!activeAlerts.length) {
+    return;
+  }
+
+  activeAlerts.forEach(a => {
     const alertDiv = document.createElement("div");
     // className doesn't need escaping - just use the category directly
     alertDiv.className = `alert ${a.cat}`;
     
     const msgDiv = document.createElement("div");
     msgDiv.className = "msg";
-    
-    const srcDiv = document.createElement("div");
-    srcDiv.className = "src";
 
     if (a.type === "now") {
       // textContent automatically escapes, so no need for escapeHtml
       msgDiv.textContent = `${a.name}: ${a.cat.toUpperCase()} now`;
-      srcDiv.textContent = "METAR";
     } else {
       const hh = String(new Date(a.hourIso).getHours()).padStart(2, "0");
       msgDiv.textContent = `${a.name}: ${a.cat.toUpperCase()} expected by ${hh}:00`;
-      srcDiv.textContent = "TAF";
     }
 
+    // Close button (X icon) instead of METAR/TAF tag
+    const closeBtn = document.createElement("button");
+    closeBtn.className = "alert-close";
+    closeBtn.innerHTML = "×";
+    closeBtn.setAttribute("aria-label", "Close alert");
+    closeBtn.addEventListener("click", () => {
+      dismissedAlerts.add(getAlertKey(a));
+      alertDiv.remove();
+    });
+
     alertDiv.appendChild(msgDiv);
-    alertDiv.appendChild(srcDiv);
+    alertDiv.appendChild(closeBtn);
     el.appendChild(alertDiv);
   });
 }
@@ -570,6 +607,7 @@ function renderFromPayload(payload) {
 
   const metarMap = new Map((payload.metars || []).map(m => [norm(m.icaoId), m]));
   // Build TAF map - ensure icaoId is normalized and timeline is always an array
+  // Preserve all timeline properties (vis, ceil, windSpeed, etc.) for tooltips
   const tafMap = new Map((payload.tafData || []).map(t => {
     const key = norm(t.icaoId || t.stationId || t.station || "");
     const timeline = Array.isArray(t.timeline) ? t.timeline : [];
